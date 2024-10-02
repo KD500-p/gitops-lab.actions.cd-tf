@@ -1,11 +1,61 @@
+variable "client_id" {
+}
+variable "client_secret" {
+}
+variable "subscription_id" {
+}
+variable "tenant_id" {
+}
+
 terraform {
-  backend "azurerm" {
-    resource_group_name   = "DevOpsConfig"
-    storage_account_name  = "saTerraform"
-    container_name        = "terraform"
-    key                   = "terraform.tfstate"
+  backend "remote" {
+    organization = "KenDevtest"
+ 
+    workspaces {
+      name = "AzureDeploy"
+    }
+  }
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=2.46.0"
+    }
   }
 }
+We also need to pass our credentials to azurerm:
+terraform.yml
+provider "azurerm" {
+  features {}
+ 
+  subscription_id = var.subscription_id
+  client_id       = var.client_id
+  client_secret   = var.client_secret
+  tenant_id       = var.tenant_id
+}
+When we were deploying we stored the password in Azure Key Vault, but now we can use a secret, so replace this
+terraform.yml
+data "azurerm_key_vault" "keyvault" {
+    name = "kvHRSConfig"
+    resource_group_name = "DevOpsConfig" 
+}
+ 
+data "azurerm_key_vault_secret" "adminpwd" {
+    name = "adminpwd"
+    key_vault_id = data.azurerm_key_vault.keyvault.id
+}
+with this
+
+terraform.yml
+variable "admin_pwd" {
+}
+Now use this variable in our os_profile:
+terraform.yml
+os_profile {
+  computer_name  = "VM1"
+  admin_username = "u2uadmin"
+  admin_password = var.admin_pwd
+}
+
 
 provider "azurerm" {
     features { }
